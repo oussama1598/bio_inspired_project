@@ -92,14 +92,26 @@ class Structure:
 
             ll_k.append(line)
 
-        return np.array(ll_k), np.array([forces]).T
+        return np.array(ll_k), np.array([forces]).T, axis_indices
 
-    def calculate_displacements(self, A, E):
-        ll_k, forces = self.calculate_ll_k_with_forces(A, E)
+    def calculate_displacements(self, E, A):
+        ll_k, forces, displacements_indices = self.calculate_ll_k_with_forces(E, A)
 
-        return np.linalg.solve(ll_k, forces)
+        unknown_displacements = np.linalg.solve(ll_k, forces)
+        all_displacements = [0 for _ in range(2 * len(self.nodes.values()))]
 
-    def draw(self):
+        for i, index in enumerate(displacements_indices):
+            all_displacements[index] = unknown_displacements[i][0]
+
+        return np.array(all_displacements)
+
+    def calculate_deformation_energy(self, E, A):
+        k = np.sum(bar.calculate_k(E, A) for bar in self.bars.values())
+        displacements = np.array([self.calculate_displacements(E, A)])
+
+        return (1 / 2) * np.dot(np.dot(displacements, k), displacements.T)[0][0]
+
+    def draw(self, show=True):
         fig, ax = plt.subplots()
 
         for node in self.nodes.values():
@@ -110,4 +122,5 @@ class Structure:
         for bar in self.bars.values():
             ax.plot([bar.from_x, bar.to_x], [bar.from_y, bar.to_y], color='b', zorder=1)
 
-        fig.show()
+        if show:
+            fig.show()
